@@ -1,0 +1,18 @@
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.video-container {
+    aspect-ratio: 4/3;
+    background-color: #000;
+}
+
+#countdownOverlay {
+    font-size: 4rem;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+    z-index: 10;
+}
+
+input:invalid {
+    border-color: #dc3545;
+}
