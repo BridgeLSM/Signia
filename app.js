@@ -1,7 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Referencias al DOM
     const cameraPreview = document.getElementById('cameraPreview');
     const recordedPreview = document.getElementById('recordedPreview');
-    const countdownOverlay = document.getElementById('countdownOverlay');
+    
+    // Nuevas superposiciones y estado
+    const recordingStatus = document.getElementById('recordingStatus');
+    const preCountdownOverlay = document.getElementById('preCountdownOverlay');
+    const recordCountdownOverlay = document.getElementById('recordCountdownOverlay');
     
     const inputPersona = document.getElementById('inputPersona');
     const inputSena = document.getElementById('inputSena');
@@ -46,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     btnRecord.addEventListener('click', () => {
-        // NUEVA VALIDACIÓN: Evita grabar si hay un video en el preview
+        // Validación de seguridad: Evita grabar si hay un video en el preview
         if (!recordedPreview.classList.contains('d-none')) {
             return alert("⚠️ Tienes un video en pantalla. Por favor, descárgalo o elimínalo antes de grabar uno nuevo.");
         }
@@ -56,53 +61,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!stream) return alert("Cámara no disponible.");
 
         const duracionSecs = parseInt(inputDuracion.value);
-        let timeLeft = 3;
+        let preCounttimeLeft = 3;
         
         btnRecord.disabled = true;
-        countdownOverlay.classList.remove('d-none');
-        countdownOverlay.innerText = timeLeft;
+        // Solo mostramos el pre countdown grande en el centro
+        preCountdownOverlay.classList.remove('d-none');
+        preCountdownOverlay.innerText = preCounttimeLeft;
 
-        // Cuenta regresiva ANTES de grabar
+        // Cuenta regresiva ANTES de grabar (3s)
         const preRecordInterval = setInterval(() => {
-            timeLeft--;
-            if (timeLeft > 0) {
-                countdownOverlay.innerText = timeLeft;
+            preCounttimeLeft--;
+            if (preCounttimeLeft > 0) {
+                preCountdownOverlay.innerText = preCounttimeLeft;
             } else {
+                // Termina pre countdown y oculta el overlay central
                 clearInterval(preRecordInterval);
+                preCountdownOverlay.classList.add('d-none');
                 
-                countdownOverlay.innerText = "¡GRABANDO!";
-                countdownOverlay.classList.add('text-danger');
+                // Muestra "¡GRABANDO!" rojo ARRIBA y la grabación
+                recordingStatus.classList.remove('d-none');
                 
                 startRecording(stream, (blob) => {
                     cameraPreview.classList.add('d-none');
                     recordedPreview.classList.remove('d-none');
                     recordedPreview.src = getBlobURL();
                     
-                    // Ya NO ocultamos el botón de grabar aquí, para que puedan intentar pulsarlo y ver la alerta
                     previewControls.classList.remove('d-none');
                     btnSwitchCamera.classList.add('d-none');
+                    
+                    // Asegurar que el estado y overlay de grabación desaparezcan
+                    recordingStatus.classList.add('d-none');
+                    recordCountdownOverlay.classList.add('d-none');
                 });
 
                 let recordTimeLeft = duracionSecs;
-
-                setTimeout(() => {
-                    countdownOverlay.innerText = recordTimeLeft;
-                }, 800);
+                
+                // Muestra la cuenta regresiva de grabación INMEDIATAMENTE abajo a la derecha
+                recordCountdownOverlay.innerText = recordTimeLeft;
+                recordCountdownOverlay.classList.remove('d-none');
 
                 // Cuenta regresiva DURANTE la grabación
                 const recordInterval = setInterval(() => {
                     recordTimeLeft--;
                     if (recordTimeLeft > 0) {
-                        countdownOverlay.innerText = recordTimeLeft;
+                        recordCountdownOverlay.innerText = recordTimeLeft;
                     } else {
+                        // Termina visualmente para el usuario y oculta todo
                         clearInterval(recordInterval);
-                        countdownOverlay.classList.add('d-none');
-                        countdownOverlay.classList.remove('text-danger');
+                        recordCountdownOverlay.classList.add('d-none');
+                        recordingStatus.classList.add('d-none');
                         btnRecord.disabled = false;
                         
                         setTimeout(() => {
                             stopRecording();
-                        }, 300);
+                        }, 300); // Pequeño margen extra invisible
                     }
                 }, 1000);
             }
@@ -116,6 +128,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         previewControls.classList.add('d-none');
         btnSwitchCamera.classList.remove('d-none');
+        
+        // Limpiar estados de cuenta regresiva por si acaso
+        preCountdownOverlay.classList.add('d-none');
+        recordCountdownOverlay.classList.add('d-none');
+        recordingStatus.classList.add('d-none');
     });
 
     btnDownload.addEventListener('click', () => {
@@ -137,23 +154,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         inputNumero.value = nextNum;
         updateState();
 
-        btnDelete.click(); 
+        btnDelete.click(); // Resetea la vista para la siguiente toma
     });
 
     btnNewSign.addEventListener('click', () => {
-        // Validar que no se pierda un video al cambiar de seña
+        // Validar seguridad: No se pierda un video al cambiar de seña
         if (!recordedPreview.classList.contains('d-none')) {
             return alert("⚠️ Descarga o elimina el video actual antes de cambiar de seña.");
         }
         inputSena.value = "";
         inputNumero.value = 1;
         updateState();
-        btnDelete.click();
+        btnDelete.click(); // Resetea la vista y oculta overlays
         inputSena.focus();
     });
 
     btnNewPerson.addEventListener('click', () => {
-        // Validar que no se pierda un video al cambiar de persona
+        // Validar seguridad: No se pierda un video al cambiar de persona
         if (!recordedPreview.classList.contains('d-none')) {
             return alert("⚠️ Descarga o elimina el video actual antes de cambiar de persona.");
         }
@@ -161,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         inputSena.value = "";
         inputNumero.value = 1;
         updateState();
-        btnDelete.click();
+        btnDelete.click(); // Resetea la vista y oculta overlays
         inputPersona.focus();
     });
 });
