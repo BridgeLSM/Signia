@@ -22,6 +22,10 @@
                             <video id="cameraPreview" autoplay muted playsinline class="w-100 h-100 object-fit-cover"></video>
                             <video id="recordedPreview" controls class="w-100 h-100 object-fit-cover d-none"></video>
                             
+                            <div id="cameraStats" class="position-absolute top-0 start-0 m-3 badge camera-stats d-none">
+                                📹 Cargando...
+                            </div>
+
                             <div id="preCountdownOverlay" class="position-absolute top-50 start-50 translate-middle text-white fw-bold countdown-overlay pre-countdown d-none"></div>
                             
                             <div id="recordCountdownOverlay" class="position-absolute bottom-0 end-0 m-3 text-white fw-bold countdown-overlay record-countdown d-none"></div>
@@ -60,7 +64,9 @@
                         
                         <div class="d-flex flex-wrap justify-content-center gap-3 mb-4 d-none" id="previewControls">
                             <button id="btnDelete" class="btn btn-outline-danger btn-custom">Eliminar</button>
-                            <button id="btnDownload" class="btn btn-success fw-bold btn-custom">Descargar</button>
+                            <button id="btnDownloadLocal" class="btn btn-primary fw-bold btn-custom">Descarga Local</button>
+                            <button id="btnDownload" class="btn btn-success fw-bold btn-custom">Subir a Drive</button>
+                            <button id="btnNextRecord" class="btn btn-dark fw-bold btn-custom">Grabar Siguiente</button>
                         </div>
 
                         <hr>

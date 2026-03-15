@@ -5,13 +5,11 @@ let videoBlob = null;
 const startRecording = (stream, onStopCallback) => {
     recordedChunks = [];
     
-    // Configuramos para webm
     const options = { mimeType: 'video/webm' };
     
     try {
         mediaRecorder = new MediaRecorder(stream, options);
     } catch (e) {
-        // Fallback si webm estricto no está soportado
         mediaRecorder = new MediaRecorder(stream); 
     }
 
@@ -26,6 +24,7 @@ const startRecording = (stream, onStopCallback) => {
         if (onStopCallback) onStopCallback(videoBlob);
     };
 
+    // El 100 obliga a guardar chunks cada 100ms para evitar el bug de pérdida de segundos
     mediaRecorder.start(100);
 };
 
@@ -37,4 +36,8 @@ const stopRecording = () => {
 
 const getBlobURL = () => {
     return videoBlob ? URL.createObjectURL(videoBlob) : null;
+};
+
+const getVideoBlob = () => {
+    return videoBlob;
 };
