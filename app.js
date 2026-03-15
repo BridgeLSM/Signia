@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Referencias al DOM
     const cameraPreview = document.getElementById('cameraPreview');
     const recordedPreview = document.getElementById('recordedPreview');
     const countdownOverlay = document.getElementById('countdownOverlay');
@@ -7,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputPersona = document.getElementById('inputPersona');
     const inputSena = document.getElementById('inputSena');
     const inputNumero = document.getElementById('inputNumero');
+    const inputDuracion = document.getElementById('inputDuracion');
     
     const btnRecord = document.getElementById('btnRecord');
     const btnDelete = document.getElementById('btnDelete');
@@ -23,85 +23,107 @@ document.addEventListener('DOMContentLoaded', async () => {
     inputPersona.value = state.persona;
     inputSena.value = state.sena;
     inputNumero.value = state.numero;
+    if (state.duracion) inputDuracion.value = state.duracion;
+    btnRecord.innerText = `Grabar (${inputDuracion.value}s)`;
 
-    // Iniciar cámara
     let stream = await initCamera(cameraPreview);
 
-    // Actualizar LocalStorage al teclear
-    const updateState = () => saveState(inputPersona.value, inputSena.value, inputNumero.value);
+    const updateState = () => saveState(inputPersona.value, inputSena.value, inputNumero.value, inputDuracion.value);
+    
     inputPersona.addEventListener('input', updateState);
     inputSena.addEventListener('input', updateState);
     inputNumero.addEventListener('input', updateState);
+    inputDuracion.addEventListener('change', () => {
+        btnRecord.innerText = `Grabar (${inputDuracion.value}s)`;
+        updateState();
+    });
 
-    // Formatear automáticamente al perder el foco (blur)
     inputPersona.addEventListener('blur', () => inputPersona.value = formatText(inputPersona.value));
     inputSena.addEventListener('blur', () => inputSena.value = formatText(inputSena.value));
 
-    // Botón: Cambiar cámara
     btnSwitchCamera.addEventListener('click', async () => {
         stream = await switchCamera(cameraPreview);
     });
 
-    // Botón: Grabar
     btnRecord.addEventListener('click', () => {
+        // NUEVA VALIDACIÓN: Evita grabar si hay un video en el preview
+        if (!recordedPreview.classList.contains('d-none')) {
+            return alert("⚠️ Tienes un video en pantalla. Por favor, descárgalo o elimínalo antes de grabar uno nuevo.");
+        }
+
         const error = validateInputs(inputPersona.value, inputSena.value, inputNumero.value);
         if (error) return alert(error);
         if (!stream) return alert("Cámara no disponible.");
 
-        // Cuenta regresiva de 3 segundos
+        const duracionSecs = parseInt(inputDuracion.value);
         let timeLeft = 3;
+        
         btnRecord.disabled = true;
         countdownOverlay.classList.remove('d-none');
         countdownOverlay.innerText = timeLeft;
 
-        const countdownInterval = setInterval(() => {
+        // Cuenta regresiva ANTES de grabar
+        const preRecordInterval = setInterval(() => {
             timeLeft--;
             if (timeLeft > 0) {
                 countdownOverlay.innerText = timeLeft;
             } else {
-                clearInterval(countdownInterval);
+                clearInterval(preRecordInterval);
+                
                 countdownOverlay.innerText = "¡GRABANDO!";
                 countdownOverlay.classList.add('text-danger');
                 
-                // Iniciar grabación de 5 segundos
                 startRecording(stream, (blob) => {
-                    // Al terminar, mostrar preview
                     cameraPreview.classList.add('d-none');
                     recordedPreview.classList.remove('d-none');
                     recordedPreview.src = getBlobURL();
                     
-                    recordControls.classList.add('d-none');
+                    // Ya NO ocultamos el botón de grabar aquí, para que puedan intentar pulsarlo y ver la alerta
                     previewControls.classList.remove('d-none');
                     btnSwitchCamera.classList.add('d-none');
                 });
 
+                let recordTimeLeft = duracionSecs;
+
                 setTimeout(() => {
-                    stopRecording();
-                    countdownOverlay.classList.add('d-none');
-                    countdownOverlay.classList.remove('text-danger');
-                    btnRecord.disabled = false;
-                }, 5200); // 200ms extra para compensar la latencia de la cámara
+                    countdownOverlay.innerText = recordTimeLeft;
+                }, 800);
+
+                // Cuenta regresiva DURANTE la grabación
+                const recordInterval = setInterval(() => {
+                    recordTimeLeft--;
+                    if (recordTimeLeft > 0) {
+                        countdownOverlay.innerText = recordTimeLeft;
+                    } else {
+                        clearInterval(recordInterval);
+                        countdownOverlay.classList.add('d-none');
+                        countdownOverlay.classList.remove('text-danger');
+                        btnRecord.disabled = false;
+                        
+                        setTimeout(() => {
+                            stopRecording();
+                        }, 300);
+                    }
+                }, 1000);
             }
         }, 1000);
     });
 
-    // Botón: Eliminar
     btnDelete.addEventListener('click', () => {
         recordedPreview.src = "";
         recordedPreview.classList.add('d-none');
         cameraPreview.classList.remove('d-none');
         
         previewControls.classList.add('d-none');
-        recordControls.classList.remove('d-none');
         btnSwitchCamera.classList.remove('d-none');
     });
 
-    // Botón: Descargar
     btnDownload.addEventListener('click', () => {
         const url = getBlobURL();
         if (!url) return;
 
-        const filename = generateFilename(inputPersona.value, inputSena.value, inputNumero.value);
+        const duracion = inputDuracion.value;
+        const filename = generateFilename(inputPersona.value, inputSena.value, inputNumero.value, duracion);
         
         const a = document.createElement('a');
         a.style.display = 'none';
@@ -111,31 +133,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         a.click();
         document.body.removeChild(a);
 
-        // Incrementar número automáticamente solo tras descargar
         let nextNum = parseInt(inputNumero.value) + 1;
         inputNumero.value = nextNum;
         updateState();
 
-        // Volver a la cámara para la siguiente toma
         btnDelete.click(); 
     });
 
-    // Botón: Nueva Seña
     btnNewSign.addEventListener('click', () => {
+        // Validar que no se pierda un video al cambiar de seña
+        if (!recordedPreview.classList.contains('d-none')) {
+            return alert("⚠️ Descarga o elimina el video actual antes de cambiar de seña.");
+        }
         inputSena.value = "";
         inputNumero.value = 1;
         updateState();
-        btnDelete.click(); // Resetea la vista
+        btnDelete.click();
         inputSena.focus();
     });
 
-    // Botón: Persona Nueva
     btnNewPerson.addEventListener('click', () => {
+        // Validar que no se pierda un video al cambiar de persona
+        if (!recordedPreview.classList.contains('d-none')) {
+            return alert("⚠️ Descarga o elimina el video actual antes de cambiar de persona.");
+        }
         inputPersona.value = "";
         inputSena.value = "";
         inputNumero.value = 1;
         updateState();
-        btnDelete.click(); // Resetea la vista
+        btnDelete.click();
         inputPersona.focus();
     });
 });
